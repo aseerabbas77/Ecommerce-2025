@@ -1,82 +1,148 @@
 import React, { useState } from "react";
+import axiosInstance from "../api/axiosInstance";
+import { toast } from "react-hot-toast";
 import { useNavigate } from "react-router-dom";
 
-function Checkout() {
+const Address = () => {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    permanentAddress: "",
-    currentAddress: "",
-    postalCode: "",
+  const [address, setAddress] = useState({
+    street: "",
     city: "",
-    country: "",
+    district: "",
+    currentAddress: "",
   });
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+  const [errors, setErrors] = useState({}); // 🛑 Validation errors
+
+  const validateFields = () => {
+    let newErrors = {};
+
+    if (!address.street.trim()) newErrors.street = "Street is required";
+    if (!address.city.trim()) newErrors.city = "City is required";
+    if (!address.district.trim()) newErrors.district = "District is required";
+    if (!address.currentAddress.trim())
+      newErrors.currentAddress = "Current Address is required";
+
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0; // ✔ no errors = valid form
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate("/order", { state: formData });
+
+    if (!validateFields()) {
+      toast.error("Please fill all required fields!");
+      return;
+    }
+
+    const token = localStorage.getItem("accessToken");
+
+    if (!token) {
+      toast.error("Please login first!");
+      return;
+    }
+
+    try {
+      const res = await axiosInstance.post("/address/create", address);
+
+      toast.success("Address saved successfully!");
+
+      setTimeout(() => {
+        navigate("/order");
+      }, 2000);
+
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to save address!");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-white to-blue-50 flex items-center justify-center px-4">
-      <div className="bg-white shadow-xl rounded-2xl p-8 sm:p-10 w-full max-w-lg border border-blue-100">
-        <h1 className="text-3xl font-bold text-center text-blue-600 mb-6">
-          🛍️ Checkout Details
-        </h1>
+    <div className="p-6 max-w-lg mx-auto">
+      <h2 className="text-2xl font-semibold mb-4">Add Address</h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {[
-            { name: "firstName", placeholder: "First Name" },
-            { name: "lastName", placeholder: "Last Name" },
-            { name: "permanentAddress", placeholder: "Permanent Address" },
-            { name: "currentAddress", placeholder: "Current Address" },
-            { name: "postalCode", placeholder: "Postal Code" },
-            { name: "city", placeholder: "City" },
-            { name: "country", placeholder: "Country" },
-          ].map((field) => (
-            <div key={field.name}>
-              <label
-                htmlFor={field.name}
-                className="block text-gray-600 font-medium mb-1"
-              >
-                {field.placeholder}
-              </label>
-              <input
-                type="text"
-                id={field.name}
-                name={field.name}
-                value={formData[field.name]}
-                onChange={handleChange}
-                placeholder={field.placeholder}
-                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition duration-200 outline-none"
-                required
-              />
-            </div>
-          ))}
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
-          <button
-            type="submit"
-            className="w-full bg-blue-500 text-white font-semibold py-2.5 rounded-lg hover:bg-blue-600 transition-all duration-200 shadow-md hover:shadow-lg"
-          >
-            Proceed to Order
-          </button>
-        </form>
+        {/* Street */}
+        <div>
+          <input
+            type="text"
+            placeholder="Street"
+            className="p-2 border rounded w-full"
+            value={address.street}
+            required
+            onChange={(e) =>
+              setAddress({ ...address, street: e.target.value })
+            }
+          />
+          {errors.street && (
+            <p className="text-red-600 text-sm mt-1">{errors.street}</p>
+          )}
+        </div>
 
-        <p className="text-center text-gray-500 text-sm mt-6">
-          Your information is secure 🔒 and used only for delivery.
-        </p>
-      </div>
+        {/* City */}
+        <div>
+          <input
+            type="text"
+            placeholder="City"
+            className="p-2 border rounded w-full"
+            value={address.city}
+            required
+            onChange={(e) =>
+              setAddress({ ...address, city: e.target.value })
+            }
+          />
+          {errors.city && (
+            <p className="text-red-600 text-sm mt-1">{errors.city}</p>
+          )}
+        </div>
+
+        {/* District */}
+        <div>
+          <input
+            type="text"
+            placeholder="District"
+            className="p-2 border rounded w-full"
+            value={address.district}
+            required
+            onChange={(e) =>
+              setAddress({ ...address, district: e.target.value })
+            }
+          />
+          {errors.district && (
+            <p className="text-red-600 text-sm mt-1">{errors.district}</p>
+          )}
+        </div>
+
+        {/* Current Address */}
+        <div>
+          <input
+            type="text"
+            placeholder="Current Address"
+            className="p-2 border rounded w-full"
+            value={address.currentAddress}
+            required
+            onChange={(e) =>
+              setAddress({ ...address, currentAddress: e.target.value })
+            }
+          />
+          {errors.currentAddress && (
+            <p className="text-red-600 text-sm mt-1">
+              {errors.currentAddress}
+            </p>
+          )}
+        </div>
+
+        <button
+          type="submit"
+          className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+        >
+          Save Address
+        </button>
+      </form>
     </div>
   );
-}
+};
 
-export default Checkout;
+export default Address;

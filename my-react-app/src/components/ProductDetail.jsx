@@ -1,130 +1,181 @@
+// src/components/ProductDetails.jsx
 import React, { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useSelector, useDispatch } from "react-redux";
-import { addToCart } from "../features/cart/cartSlice";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchProducts } from "../features/products/productsSlice";
+import { addToCartAPI } from "../features/cart/cartSlice";
+import { showSuccessToast, showErrorToast } from "../utils/Toaster";
 
-const ProductDetail = () => {
+const ProductDetails = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const products = useSelector((state) => state.products.items) || [];
+  const auth = useSelector((state) => state.auth);
+  const user = auth?.user;
+
+  const productsState = useSelector((state) => state.products);
+  const { items: allProducts, loading: productsLoading } = productsState;
+
   const [product, setProduct] = useState(null);
-  const [related, setRelated] = useState([]);
+  const [relatedProducts, setRelatedProducts] = useState([]);
+  const [loadingProductId, setLoadingProductId] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
+  // Fetch all products from Redux store
   useEffect(() => {
-    const found = products.find((p) => p.id === parseInt(id));
-    setProduct(found || null);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
 
-    if (found) {
-      // If products have category field use that, otherwise fallback to simple title matching
-      const sameCategory = products.filter(
-        (p) =>
-          p.id !== found.id &&
-          (p.category && found.category
-            ? p.category === found.category
-            : p.title && found.title
-            ? p.title.split(" ")[0] === found.title.split(" ")[0] 
-            : false)
-      );
-      setRelated(sameCategory.slice(0, 4));
-    } else {
-      setRelated([]);
+        // Fetch single product by ID
+        const currentProduct = allProducts.find((p) => p._id === id);
+        if (!currentProduct) {
+          // If product not in store, fetch all products
+          await dispatch(fetchProducts()).unwrap();
+        }
+
+        const updatedAllProducts = allProducts.length > 0 ? allProducts : (await dispatch(fetchProducts()).unwrap());
+
+        const mainProduct = updatedAllProducts.find((p) => p._id === id);
+        if (!mainProduct) {
+          setError("Product not found");
+          return;
+        }
+        setProduct(mainProduct);
+
+        // Related products: same category, exclude main product
+        const related = updatedAllProducts.filter(
+          (p) => p._id !== mainProduct._id && p.category === mainProduct.category
+        );
+        setRelatedProducts(related);
+
+      } catch (err) {
+        setError(err.message || "Failed to load product");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [id, allProducts, dispatch]);
+
+  // Add to Cart
+  const handleAddToCart = async (product) => {
+    try {
+      setLoadingProductId(product._id);
+      await dispatch(addToCartAPI(product)).unwrap();
+      showSuccessToast("Product added to cart!");
+    } catch (err) {
+      if (err.response?.status === 401) {
+        showErrorToast("Please login first!");
+        navigate("/login");
+      } else {
+        showErrorToast(err.response?.data?.message || err.message || "Failed to add to cart!");
+      }
+    } finally {
+      setLoadingProductId(null);
     }
-  }, [id, products]);
+  };
+
+  if (loading || productsLoading)
+    return <p className="text-center text-blue-500 text-lg mt-10">Loading...</p>;
+
+  if (error)
+    return <p className="text-center text-red-500 mt-10">{error}</p>;
 
   if (!product)
-    return (
-      <p className="text-center mt-10 text-lg font-semibold text-gray-600">
-        Product not found.
-      </p>
-    );
+    return <p className="text-center text-gray-500 mt-10">No product found.</p>;
 
   return (
-    <div className="min-h-scree  bg-gray-60 px-4 py-10">
-      <div className="max-w-6xl mx-auto bg-white p-8 rounded-lg shadow flex flex-col md:flex-row items-center md:items-start gap-8">
+    <div className="max-w-6xl mx-auto p-6 mt-10">
+      {/* Product Section */}
+      <div className="bg-white rounded-xl shadow-lg p-6 flex flex-col md:flex-row gap-10">
+        {/* Left: Image */}
         <div className="w-full md:w-1/2 flex justify-center">
           <img
-            src={product.image}
+            src={product.imageUrl}
             alt={product.title}
-            className="h-96 w-full max-w-md object-contain rounded"
+            className="h-[380px] object-contain rounded-lg shadow-md"
           />
         </div>
 
-        <div className="w-full md:w-1/2 flex flex-col text-left">
-          <h1 className="text-sm font-semibold text-blue-600 mb-1">Name</h1>
-          <h2 className="text-3xl font-bold mb-4">{product.title}</h2>
+        {/* Right: Info */}
+        <div className="w-full md:w-1/2 space-y-4">
+          {product.category && (
+            <span className="px-4 py-1 inline-block bg-blue-100 text-blue-700 rounded-full text-sm font-medium shadow-sm">
+              {product.category}
+            </span>
+          )}
 
-          <h3 className="text-sm font-semibold text-blue-600 mb-1">Price</h3>
-          <p className="text-2xl font-semibold text-gray-900 mb-4">
-            ${product.price}
-          </p>
+          <h1 className="text-4xl font-bold text-gray-800">{product.title}</h1>
+          <p className="text-gray-600 text-lg">{product.description}</p>
+          <p className="text-3xl font-semibold text-green-700">${product.price}</p>
 
-          <h3 className="text-sm font-semibold text-blue-600 mb-1">Description</h3>
-          <p className="text-gray-700 mb-6">{product.description}</p>
-
-          <div className="flex flex-col md:flex-row  gap-3">
+          <div className="flex gap-4 mt-4 flex-wrap">
             <button
-              onClick={() => dispatch(addToCart(product))}
-              className="bg-blue-600 text-white px-5 py-2 rounded-md w-full md:w-auto hover:bg-blue-700 transition"
+              onClick={() => navigate("/")}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 py-3 rounded-lg shadow-sm transition"
             >
-              Add to Cart
+              ← Back
             </button>
 
             <button
-              onClick={() => navigate("/")}
-              className="bg-gray-200 text-gray-800 px-4 py-2 w-full md:w-auto rounded-md hover:bg-gray-300 transition"
+              onClick={() => handleAddToCart(product)}
+              disabled={loadingProductId === product._id}
+              className={`${
+                loadingProductId === product._id
+                  ? "bg-green-400 cursor-not-allowed"
+                  : "bg-green-600 hover:bg-green-700"
+              } text-white px-7 py-3 rounded-lg shadow-md transition min-w-[140px] flex items-center justify-center`}
             >
-              Back to Products
+              <span className="flex items-center gap-2 justify-center">
+                {loadingProductId === product._id && (
+                  <div className="animate-spin h-5 w-5 border-2 border-white border-t-transparent rounded-full"></div>
+                )}
+                Add to Cart
+              </span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Related products */}
-      <div className="max-w-6xl mx-auto mt-10">
-        <h3 className="text-2xl font-bold mb-6 text-gray-800">Related Products</h3>
+      {/* Related Products */}
+      <div className="mt-16">
+        <h2 className="text-2xl font-semibold mb-6 text-gray-800">
+          Related Products
+        </h2>
 
-        {related.length === 0 ? (
-          <p className="text-gray-600">No related products found.</p>
-        ) : (
-          <div className="grid sm:grid-cols-1 md:grid-cols-3 gap-6">
-            {related.map((rp) => (
-              <div
-                key={rp.id}
-                className="flex flex-col items-center border rounded-lg bg-white p-4 shadow-sm hover:shadow-md transition"
-              >
-                <img
-                  src={rp.image}
-                  alt={rp.title}
-                  className="h-40 w-full object-contain mb-3"
-                />
-                <h4 className="text-sm font-semibold text-center text-gray-800 mb-1 line-clamp-2">
-                  {rp.title}
-                </h4>
-                <p className="text-gray-600 font-medium mb-3">${rp.price}</p>
-
-                <div className="flex gap-2 w-full">
-                  <button
-                    onClick={() => dispatch(addToCart(rp))}
-                    className="bg-blue-600 text-white py-2 rounded-md w-1/2 text-sm hover:bg-blue-700 transition"
-                  >
-                    Add
-                  </button>
-                  <button
-                    onClick={() => navigate(`/product/${rp.id}`)}
-                    className="bg-gray-200 text-gray-800 py-2 rounded-md w-1/2 text-sm hover:bg-gray-300 transition"
-                  >
-                    View
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+        {relatedProducts.length === 0 && (
+          <p className="text-gray-500">No related products found.</p>
         )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+          {relatedProducts.map((item) => (
+            <div
+              key={item._id}
+              className="bg-white rounded-xl shadow hover:shadow-lg p-4 flex flex-col items-center transition"
+            >
+              <img
+                src={item.imageUrl}
+                alt={item.title}
+                className="h-[160px] object-contain mb-3"
+              />
+              <h3 className="font-semibold text-gray-800 text-center">{item.title}</h3>
+              <p className="text-green-600 font-bold mt-1">${item.price}</p>
+              <Link
+                to={`/product/${item._id}`}
+                className="mt-3 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm transition"
+              >
+                View Details
+              </Link>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 };
 
-export default ProductDetail;
+export default ProductDetails;

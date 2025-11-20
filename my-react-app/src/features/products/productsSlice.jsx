@@ -1,10 +1,17 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
-import axios from "axios";
+import api from "../../api/axiosInstance"; // ✅ import instance
 
-// Async thunk to fetch data from FakeStore API
+// Async thunk using Axios instance
 export const fetchProducts = createAsyncThunk("products/fetch", async () => {
-  const res = await axios.get("https://fakestoreapi.com/products");
-  return res.data;
+  try {
+    console.log("📡 Fetching products...");
+    const res = await api.get("/products/all"); // ✅ simplified call
+    console.log("✅ API Response:", res.data);
+    return res.data;
+  } catch (err) {
+    console.error("❌ Fetch error:", err.message);
+    throw err;
+  }
 });
 
 const productsSlice = createSlice({
@@ -18,6 +25,7 @@ const productsSlice = createSlice({
     builder
       .addCase(fetchProducts.pending, (state) => {
         state.loading = true;
+        state.error = null;
       })
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.loading = false;
