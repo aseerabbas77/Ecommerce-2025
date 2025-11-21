@@ -17,12 +17,16 @@ const app = express();
 // ✅ Enable CORS (allow requests from frontend port 5173)
 app.use(
   cors({
-    origin: ["http://localhost:5173"], // array bhi use karlo (future proof)
+    origin: [
+      "http://localhost:5173",
+      "https://ecommerce-2025-production.up.railway.app"
+    ],
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // 👈 OPTIONS add karo
-    allowedHeaders: ["Content-Type", "Authorization"], // 👈 kuch browsers ke liye zaroori
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
 
 // Middleware
 app.use(express.json());

@@ -1,61 +1,46 @@
 import React, { useState } from "react";
-import axios from "axios";
+import axiosInstance from "../api/axiosInstance"; // axiosInstance import karein
 import { useNavigate, Link } from "react-router-dom";
 import { showSuccessToast, showErrorToast } from "../utils/Toaster";
-import { useAuth } from "../AuthContext"; // AuthContext se custom hook import karein
+import { useAuth } from "../AuthContext";
 
 const Login = () => {
-  // AuthContext se 'login' function haasil karein
   const { login } = useAuth();
   const navigate = useNavigate();
-
-  // Loading state (button ko disable karne aur spinner dikhane ke liye)
   const [loading, setLoading] = useState(false);
 
-  // Form ke data ke liye state
   const [loginData, setLoginData] = useState({
     email: "",
     password: "",
   });
 
-  // Form input mein type karne par state ko update karein
   const handleChange = (e) => {
     setLoginData({ ...loginData, [e.target.name]: e.target.value });
   };
 
-  // Form submit hone par
   const handleSubmit = async (e) => {
-    e.preventDefault(); // Default form submission ko rokein
-    setLoading(true); // Loader shuru karein
+    e.preventDefault();
+    setLoading(true);
 
     try {
-      // Backend par login API ko call karein
-      const response = await axios.post(
-        "http://localhost:5000/api/users/login",
-        loginData
-      );
-
+      // axiosInstance se backend call
+      const response = await axiosInstance.post("/users/login", loginData);
       const responseData = response.data;
 
-      // Check karein ki backend se accessToken aur user object dono mile hain
-      if (responseData && responseData.accessToken && responseData.user) {
-        // AuthContext ke login function ko call karein aur dono cheezein pass karein
+      if (responseData?.accessToken && responseData?.user) {
+        // AuthContext ke login function ko call karein
         login(responseData.accessToken, responseData.user);
 
         showSuccessToast("Login successful!");
-        // User ko homepage par navigate karein
         navigate("/", { replace: true });
       } else {
-        // Agar backend se poora data na mile
         showErrorToast("Incomplete data received from server.");
       }
     } catch (error) {
-      // Agar API call fail ho jaye
       showErrorToast(
         error.response?.data?.message || "Invalid credentials!"
       );
     } finally {
-      // Chahe success ho ya error, loader ko band karein
       setLoading(false);
     }
   };
@@ -86,7 +71,6 @@ const Login = () => {
             required
           />
 
-          {/* Loading State ke saath Dynamic Button */}
           <button
             type="submit"
             disabled={loading}

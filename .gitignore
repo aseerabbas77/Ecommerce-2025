@@ -5,3 +5,4 @@ node_modules/
 build/
 dist/
 # Add any other project-wide ignores here
+.railway

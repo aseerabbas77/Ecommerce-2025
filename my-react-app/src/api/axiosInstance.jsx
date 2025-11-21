@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const axiosInstance = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "https://ecommerce-2025-production.up.railway.app/api", // Railway production link
 });
 
 // Request Interceptor — ALWAYS read latest token
