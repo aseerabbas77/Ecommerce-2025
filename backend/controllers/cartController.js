@@ -206,5 +206,5 @@ export const decreaseQuantity = async (req, res) => {
       message: "Error decreasing quantity",
       error: error.message,
     });
-  }
+  }f
 };
