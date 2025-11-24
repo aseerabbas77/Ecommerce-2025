@@ -19,13 +19,16 @@ app.use(
   cors({
     origin: [
       "http://localhost:5173",
-      "https://ecommerce-2025-production.up.railway.app"
+      "https://ecombackend-production-b7eb.up.railway.app",
+      "https://ecom-frontend-taupe-six.vercel.app" // ✅ new frontend URL
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
+
+
 
 
 // Middleware
